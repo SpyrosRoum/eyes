@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  eyes:
+    build:
+      context: .
+      target: runtime
+
+    ports:
+      - "8087:8080"
+
+    volumes:
+      - ./prefixes.txt:/prefixes.txt
+    restart: "always"
+
