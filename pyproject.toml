@@ -1,17 +1,14 @@
-[tool.poetry]
+[project]
+authors = [
+    {name = "Spyros Roum", email = "spyros.roum@posteo.net"},
+]
+requires-python = ">=3.11"
 name = "eyes"
 version = "0.1.0"
 description = ""
-authors = ["Spyros Roum <spyros.roum@posteo.net>"]
 readme = "README.md"
 
-[tool.poetry.dependencies]
-python = "^3.11"
-litestar = "^2.3.2"
-uvicorn = { extras = ["standard"], version = "^0.24.post1" }
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
+dependencies = [
+    "litestar<3.0.0,>=2.14.0",
+    "uvicorn[standard]<1.0.0,>=0.34.0",
+]

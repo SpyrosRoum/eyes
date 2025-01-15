@@ -1,27 +1,34 @@
-FROM python:3.11.6-bookworm as builder
+# Use a Python image with uv pre-installed
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
-RUN pip install poetry==1.7.0
-
-ENV POETRY_NO_INTERACTION=1 \
-    POETRY_VIRTUALENVS_IN_PROJECT=1 \
-    POETRY_VIRTUALENVS_CREATE=1 \
-    POETRY_CACHE_DIR=/tmp/poetry_cache
-
+# Install the project into `/app`
 WORKDIR /app
 
-COPY pyproject.toml poetry.lock ./
+# Enable bytecode compilation
+ENV UV_COMPILE_BYTECODE=1
 
-RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --no-root #--without dev --no-root
+# Copy from the cache instead of linking since it's a mounted volume
+ENV UV_LINK_MODE=copy
 
+# Install the project's dependencies using the lockfile and settings
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project --no-dev
 
-FROM python:3.11.6-slim-bookworm as runtime
+# Then, add the rest of the project source code and install it
+# Installing separately from its dependencies allows optimal layer caching
+ADD . /app
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
-ENV VIRTUAL_ENV=/app/.venv \
-    PATH="/app/.venv/bin:$PATH"
+# Place executables in the environment at the front of the path
+ENV PATH="/app/.venv/bin:$PATH"
 
-COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
+# Reset the entrypoint, don't invoke `uv`
+ENTRYPOINT []
 
-COPY eyes ./eyes
-
-ENTRYPOINT ["uvicorn", "eyes.main:app", "--host", "0.0.0.0", "--port", "8080"]
-
+# Run the FastAPI application by default
+# Uses `fastapi dev` to enable hot-reloading when the `watch` sync occurs
+# Uses `--host 0.0.0.0` to allow access from outside the container
+CMD ["uvicorn", "eyes.main:app", "--host", "0.0.0.0", "--port", "8080"]
